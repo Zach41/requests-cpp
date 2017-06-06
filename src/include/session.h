@@ -3,6 +3,7 @@
 
 #include "types.h"
 #include "parameters.h"
+#include "response.h"
 
 #include <memory>
 namespace requests {

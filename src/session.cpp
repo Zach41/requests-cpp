@@ -6,6 +6,7 @@
 
 #include "session.h"
 #include "types.h"
+#include "util.h"
 
 namespace requests {
     class Session::Impl {
@@ -80,9 +81,44 @@ namespace requests {
 
         curl_ -> error[0] = '\0';
         
+        std::string response_string;
+        std::string header_string;
+        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, requests::util::writeFunction);
+        curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response_string);
+        curl_easy_setopt(curl, CURLOPT_HEADERDATA, &header_string);
+
         auto curl_error = curl_easy_perform(curl);
 
-        return "ok";
+        char* raw_url;
+        long response_code;
+        double elapsed;
+        curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &response_code);
+        curl_easy_getinfo(curl, CURLINFO_TOTAL_TIME, &elapsed);
+        curl_easy_getinfo(curl, CURLINFO_EFFECTIVE_URL, &raw_url);
+
+        Error error(curl_error, curl_ -> error);
+
+        Cookies cookies;
+        struct curl_slist* raw_cookies;
+        curl_easy_getinfo(curl, CURLINFO_COOKIELIST, &raw_cookies);
+        for (struct curl_slist* nc = raw_cookies; nc; nc = nc -> next) {
+            auto tokens = requests::util::split(nc -> data, '\t');
+            auto value = tokens.back();
+            tokens.pop_back();
+            cookies[tokens.back()] = value;
+        }
+        curl_slist_free_all(raw_cookies);
+
+        auto header = requests::util::parserHeader(header_string);
+        return Response {
+            static_cast<std::int32_t>(response_code),
+            response_string,
+            header,
+            elapsed,
+            raw_url,
+            cookies,
+            error
+        };
     }
 
     Response Session::Impl::Get() {

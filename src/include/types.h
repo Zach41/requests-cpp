@@ -19,7 +19,8 @@ namespace requests {
     };
 
     using Header = std::map<std::string, std::string, CaseInsensitiveCompare>;
-    using Response = std::string;
+    using Body = std::string;
+    // using Response = std::string;
 
     struct CurlHolder {
         CURL *handle;
